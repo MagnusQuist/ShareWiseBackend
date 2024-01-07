@@ -7,13 +7,18 @@
  * See a full list of supported triggers at https://firebase.google.com/docs/functions
  */
 
-const functions = require("firebase-functions");
-const {onRequest, HttpsError} = require("firebase-functions/v2/https");
+const {logger} = require("firebase-functions");
+const {onRequest} = require("firebase-functions/v2/https");
+const {initializeApp} = require("firebase-admin/app");
 const admin = require("firebase-admin");
-admin.initializeApp();
 
-exports.sendNotifications = onRequest((request, response) => {
-  const data = request.body;
+initializeApp();
+
+exports.sendNotifications = onRequest(async (req, res) => {
+  console.log(req.body);
+  const data = req.body.data;
+  console.log(data);
+  console.log(data.tokens);
   const messages = data.tokens.map((token) => ({
     notification: {
       title: data.title,
@@ -23,12 +28,12 @@ exports.sendNotifications = onRequest((request, response) => {
   }));
 
   return admin.messaging().sendEach(messages)
-      .then((response) => {
-        functions.info("Notification sent");
-        return {success: true, response: response.responses};
+      .then((res) => {
+        logger.info("Notification sent");
+        return {success: true, res: res.responses};
       })
       .catch((e) => {
-        functions.error("Notification not sent", e.message);
-        throw new HttpsError("unknown", e.message, e);
+        logger.error("Notification not sent", e.message);
+        return {success: false, res: res.responses};
       });
 });
